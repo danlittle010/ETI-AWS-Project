@@ -1,0 +1,16 @@
+.box {
+    max-width: 420px;
+    margin: 3rem auto;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 23px rgba(22, 31, 41, 0.15);
+    background: #fff;
+}
+
+body {
+    background: #f4f6fb;
+}
+
+h2 {
+    margin-bottom: 1rem;
+}

@@ -32,33 +32,67 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function downloadJSON(data, filename = 'login-data.json') {
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
+    function showMessage(type, text) {
+        output.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
     }
 
-    loginForm.addEventListener('submit', (event) => {
+    async function fetchSignupUsers() {
+        try {
+            const response = await fetch('/Signup.json', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('Could not load signups');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to read Signup.json:', error);
+            return null;
+        }
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const formData = collectFormData();
 
-        output.innerHTML = `<div class="alert alert-success">Logged in as: <strong>${formData.email}</strong> (${formData.type})</div>`;
+        if (!formData.email || !formData.password) {
+            showMessage('warning', 'Please enter email and password.');
+            return;
+        }
 
-        // Optional: save automatically on login
-        downloadJSON(formData, 'login-data.json');
+        const users = await fetchSignupUsers();
+        if (users === null) {
+            showMessage('danger', 'Could not read signup data. Make sure Signup.json exists.');
+            return;
+        }
+
+        const userMatch = users.find((u) => u.email === formData.email && u.password === formData.password);
+        if (!userMatch) {
+            showMessage('danger', 'Invalid email or password.');
+            return;
+        }
+
+        showMessage('success', `Login successful. Welcome, ${userMatch.fullname || userMatch.email}!`);
     });
 
     saveJsonBtn.addEventListener('click', () => {
         const formData = collectFormData();
-        downloadJSON(formData, 'login-data.json');
-        output.innerHTML = `<div class="alert alert-info">Saved form data to login-data.json</div>`;
+        const loginData = {
+            type: formData.type,
+            name: formData.name,
+            email: formData.email,
+            password: formData.password
+        };
+        const json = JSON.stringify(loginData, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'login-data.json';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+
+        showMessage('info', 'Saved form data to login-data.json');
     });
 
     // Start state
