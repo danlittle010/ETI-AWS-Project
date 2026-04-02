@@ -2,8 +2,11 @@ import requests
 from bs4 import BeautifulSoup
 
 # Step 1: Fetch the HTML content
-url = 'https://example.com'
-response = requests.get(url)
+url = 'https://www.espn.com'
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
+response = requests.get(url, headers=headers)
 # Step 2: Check if the request was successful
 if response.status_code == 200:
     # Step 3: Parse the HTML
