@@ -1,20 +1,72 @@
-import requests
-from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
+import time
 
-# Step 1: Fetch the HTML content
-url = 'https://www.espn.com'
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-response = requests.get(url, headers=headers)
-# Step 2: Check if the request was successful
-if response.status_code == 200:
-    # Step 3: Parse the HTML
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    # Step 4: Extract specific data (e.g., all <h2> headings)
-    headings = soup.find_all('h2')
-    for heading in headings:
-        print(heading.text.strip())
-else:
-    print(f"Failed to retrieve page: {response.status_code}")
+leaving_from = input("Enter departure city or airport: ")
+going_to = input("Enter destination city or airport: ")
+depart_date = input("Enter departure date (YYYY-MM-DD): ")
+return_date = input("Enter return date (YYYY-MM-DD): ")
+
+#if not depart_date or not return_date:
+#    depart_date = time.strftime("%Y-%m-%d", time.localtime(time.time() + 7 * 24 * 3600))
+#    return_date = time.strftime("%Y-%m-%d", time.localtime(time.time() + 14 * 24 * 3600))
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False)
+    page = browser.new_page()
+
+    page.goto("https://www.skyscanner.com", wait_until="domcontentloaded")
+    page.wait_for_timeout(3000)
+
+    # --- From field ---
+    page.locator('[placeholder="Country, city or airport"]').first.click()
+    page.wait_for_timeout(500)
+    page.keyboard.press("Control+A")
+    page.keyboard.press("Backspace")
+    page.keyboard.type(leaving_from)
+    page.wait_for_timeout(1500)
+    # Pick first suggestion from dropdown
+    page.locator('[id^="fsc-destination-search"] li').first.click()
+    page.wait_for_timeout(500)
+
+    # --- To field ---
+    page.locator('[placeholder="Country, city or airport"]').nth(1).click()
+    page.wait_for_timeout(500)
+    page.keyboard.type(going_to)
+    page.wait_for_timeout(1500)
+    page.locator('[id^="fsc-destination-search"] li').first.click()
+    page.wait_for_timeout(500)
+
+    # --- Depart date ---
+    page.locator('[placeholder="Add date"]').first.click()
+    page.wait_for_timeout(1000)
+    # Click the correct day on the calendar
+    page.locator(f'[data-testid="{depart_date}"]').click()
+    page.wait_for_timeout(500)
+
+    # --- Return date ---
+    page.locator(f'[data-testid="{return_date}"]').click()
+    page.wait_for_timeout(500)
+
+    # Confirm date selection if there's a Done button
+    done_btn = page.locator('button:has-text("Done")')
+    if done_btn.count() > 0:
+        done_btn.click()
+    page.wait_for_timeout(500)
+
+    # --- Search ---
+    page.locator('button:has-text("Search")').click()
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(5000)
+
+    # --- Extract results ---
+    results = page.locator('[class*="FlightsResults_dayViewItems"]').all()
+    if results:
+        for r in results:
+            print(r.inner_text())
+            print("---")
+    else:
+        print("No results found — selectors may need updating")
+        print("Page title:", page.title())
+
+    input("Press Enter to close...")
+    browser.close()
