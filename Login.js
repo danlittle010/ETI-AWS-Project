@@ -70,7 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        showMessage('success', `Login successful. Welcome, ${userMatch.fullname || userMatch.email}!`);
+        showMessage('success', `Login successful. Welcome, ${userMatch.fullname || userMatch.email}! Redirecting...`);
+        setTimeout(() => {
+            window.location.href = 'main.html';
+        }, 750);
     });
 
     saveJsonBtn.addEventListener('click', () => {

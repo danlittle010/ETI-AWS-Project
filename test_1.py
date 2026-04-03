@@ -77,7 +77,14 @@ with sync_playwright() as p:
     # --- Depart date ---
     page.locator('[placeholder="Depart"]').first.click()
     page.wait_for_timeout(1000)
-    page.locator(f'[data-testid="{depart_date}"]').click()
+    page.wait_for_selector(f'button[data-testid="{depart_date}"]', state="visible", timeout=5000)
+    page.locator(f'button[data-testid="{depart_date}"]').click()
+    calendar_buttons = page.locator('button[aria-label]').all()
+    for btn in calendar_buttons[:20]:  # print first 20 buttons
+        print("aria-label:", btn.get_attribute("aria-label"))
+        print("data-testid:", btn.get_attribute("data-testid"))
+        print("class:", btn.get_attribute("class"))
+        print("---")
     random_wait(page)
 
     # --- Return date ---

@@ -55,7 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveSignupToServer(payload)
             .then(() => {
-                displayMessage('success', 'Signup info saved to Signup.json on server.');
+                displayMessage('success', 'Signup info saved to Signup.json on server. Redirecting to main page...');
+                setTimeout(() => {
+                    window.location.href = 'main.html';
+                }, 750);
             })
             .catch((err) => {
                 displayMessage('danger', `Saving failed: ${err.message}`);
