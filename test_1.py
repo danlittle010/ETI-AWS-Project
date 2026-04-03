@@ -1,4 +1,5 @@
 from playwright.sync_api import sync_playwright
+from datetime import datetime
 import random
 
 leaving_from = "New York"
@@ -23,10 +24,57 @@ def clear_and_type(page, locator, text):
     locator.click()
     random_wait(page)
     page.keyboard.press("Meta+A")
-    page.wait_for_timeout(300)  # Select all text
-    page.keyboard.press("Delete")     # Delete selected text
     page.wait_for_timeout(300)
-    human_type(page, text)    # then type naturally
+    page.keyboard.press("Delete")
+    page.wait_for_timeout(300)
+    human_type(page, text)
+
+def click_date(page, date_str, date_type="departure"):
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    formatted = date_obj.strftime("%A, %B %-d, %Y")
+    aria = f"{formatted}. Select as {date_type} date"
+    print(f"Clicking: {aria}")
+    page.locator(f'button[aria-label="{aria}"]').click()
+
+STEALTH_SCRIPT = """
+    () => {
+        // Hide webdriver
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+        // Fake plugins
+        Object.defineProperty(navigator, 'plugins', {
+            get: () => [1, 2, 3, 4, 5],
+        });
+
+        // Fake languages
+        Object.defineProperty(navigator, 'languages', {
+            get: () => ['en-US', 'en'],
+        });
+
+        // Fake chrome object
+        window.chrome = {
+            runtime: {},
+            loadTimes: function() {},
+            csi: function() {},
+            app: {}
+        };
+
+        // Fake permissions
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+                Promise.resolve({ state: Notification.permission }) :
+                originalQuery(parameters)
+        );
+
+        // Fake screen dimensions
+        Object.defineProperty(screen, 'width', { get: () => 1280 });
+        Object.defineProperty(screen, 'height', { get: () => 800 });
+
+        // Remove headless indicators
+        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => 1 });
+    }
+"""
 
 with sync_playwright() as p:
     browser = p.chromium.launch(
@@ -36,6 +84,8 @@ with sync_playwright() as p:
             "--disable-infobars",
             "--no-sandbox",
             "--disable-dev-shm-usage",
+            "--disable-web-security",
+            "--disable-features=IsolateOrigins,site-per-process",
         ]
     )
     context = browser.new_context(
@@ -43,12 +93,42 @@ with sync_playwright() as p:
         viewport={"width": 1280, "height": 800},
         locale="en-US",
         timezone_id="America/New_York",
+        # Fake geolocation to match New York
+        geolocation={"longitude": -74.006, "latitude": 40.7128},
+        permissions=["geolocation"],
+        # Make it look like a real browser
+        java_script_enabled=True,
+        accept_downloads=True,
+        has_touch=False,
+        is_mobile=False,
     )
 
-    page = context.new_page()
-    page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    # Inject stealth scripts on every page load
+    context.add_init_script(STEALTH_SCRIPT)
 
- 
+    # Block heavy resources to speed up loading
+    def block_resources(route):
+        if route.request.resource_type in ["image", "font", "media"]:
+            route.abort()
+        else:
+            route.continue_()
+
+    page = context.new_page()
+
+    # Add extra headers to look more like a real browser
+    page.set_extra_http_headers({
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+    })
+
+    page.route("**/*", block_resources)
 
     # Navigate with longer timeout
     try:
@@ -75,34 +155,43 @@ with sync_playwright() as p:
     random_wait(page)
 
     # --- Depart date ---
-    page.locator('[placeholder="Depart"]').first.click()
-    page.wait_for_timeout(1000)
-    page.wait_for_selector(f'button[data-testid="{depart_date}"]', state="visible", timeout=5000)
-    page.locator(f'button[data-testid="{depart_date}"]').click()
-    calendar_buttons = page.locator('button[aria-label]').all()
-    for btn in calendar_buttons[:20]:  # print first 20 buttons
-        print("aria-label:", btn.get_attribute("aria-label"))
-        print("data-testid:", btn.get_attribute("data-testid"))
-        print("class:", btn.get_attribute("class"))
-        print("---")
+    try:
+        page.locator('[data-testid="depart-date"]').first.click()
+    except:
+        try:
+            page.locator('button:has-text("Add date")').first.click()
+        except:
+            page.locator('[data-testid="dates-container"]').first.click()
+
+    page.wait_for_timeout(2000)
+    click_date(page, depart_date, "departure")
     random_wait(page)
 
     # --- Return date ---
-    page.locator('[placeholder="Return"]').first.click()
-    page.wait_for_timeout(1000)
-    page.locator(f'[data-testid="{return_date}"]').click()
+    click_date(page, return_date, "return")
     random_wait(page)
 
-    # Confirm date selection if there's a Done button
-    done_btn = page.locator('button:has-text("Done")')
-    if done_btn.count() > 0:
-        done_btn.click()
+    # Click Apply to confirm
+    apply_btn = page.locator('button:has-text("Apply")')
+    if apply_btn.count() > 0:
+        apply_btn.click()
     random_wait(page)
+
+    # Human-like pause before searching
+    page.wait_for_timeout(random.randint(1000, 2000))
 
     # --- Search ---
     page.locator('button:has-text("Search")').click()
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(random.randint(4000, 6000))
+
+    # --- Press and hold button ---
+    button = page.locator('button:has-text("Press & hold")')
+    box = button.bounding_box()
+    page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(2000)
+    page.mouse.up()
 
     # --- Extract results ---
     results = page.locator('[class*="FlightsResults_dayViewItems"]').all()
