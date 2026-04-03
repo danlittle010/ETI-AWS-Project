@@ -1,0 +1,14 @@
+{
+  "name": "expedia-project",
+  "version": "1.0.0",
+  "description": "Travel booking with auto-updating",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

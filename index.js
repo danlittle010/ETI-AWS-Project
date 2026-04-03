@@ -192,6 +192,64 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // AJAX endpoint: Get all signup users
+  if (url === '/api/users' && req.method === 'GET') {
+    fs.readFile(SIGNUP_FILE, 'utf8', (err, content) => {
+      if (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+      try {
+        const users = JSON.parse(content || '[]');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(users));
+      } catch (parseErr) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+      }
+    });
+    return;
+  }
+
+  // AJAX endpoint: Get travel deals
+  if (url === '/api/travel-deals' && req.method === 'GET') {
+    const travelDeals = [
+      { id: 1, destination: 'Paris, France', price: 650.00, airline: 'Air France' },
+      { id: 2, destination: 'Tokyo, Japan', price: 890.00, airline: 'JAL' },
+      { id: 3, destination: 'London, UK', price: 550.00, airline: 'British Airways' }
+    ];
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(travelDeals));
+    return;
+  }
+
+  // AJAX endpoint: Get all updates at once
+  if (url === '/api/updates' && req.method === 'GET') {
+    const travelDeals = [
+      { id: 1, destination: 'Paris, France', price: 650.00, airline: 'Air France' },
+      { id: 2, destination: 'Tokyo, Japan', price: 890.00, airline: 'JAL' },
+      { id: 3, destination: 'London, UK', price: 550.00, airline: 'British Airways' }
+    ];
+    
+    fs.readFile(SIGNUP_FILE, 'utf8', (err, content) => {
+      let users = [];
+      try {
+        users = JSON.parse(content || '[]');
+      } catch (parseErr) {
+        users = [];
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        users: users,
+        travelDeals: travelDeals,
+        timestamp: new Date().toISOString()
+      }));
+    });
+    return;
+  }
+
   if (req.method !== 'GET') {
     res.writeHead(405, { 'Content-Type': 'text/plain' });
     res.end('405 Method Not Allowed');
