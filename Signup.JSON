@@ -4,5 +4,17 @@
     "email": "dbl5605@psu.edu",
     "password": "test1",
     "createdAt": "2026-04-02T03:15:07.942Z"
+  },
+  {
+    "fullname": "Test 2",
+    "email": "test@test.com",
+    "password": "pass1",
+    "createdAt": "2026-04-03T00:22:26.375Z"
+  },
+  {
+    "fullname": "test 3",
+    "email": "test3@test.com",
+    "password": "test3",
+    "createdAt": "2026-04-03T00:42:38.428Z"
   }
 ]

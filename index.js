@@ -32,9 +32,25 @@ function send500(res, err) {
 }
 
 const SIGNUP_FILE = path.join(PUBLIC_ROOT, 'Signup.json');
+const SQL_FILE = path.join(PUBLIC_ROOT, 'expedia_setup.sql');
 
 function writeJsonFile(filePath, data, callback) {
   fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8', callback);
+}
+
+function appendToSqlFile(entry, callback) {
+  const date = new Date(entry.createdAt);
+  const formattedDate = date.toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
+  const insertStmt = `\nINSERT INTO users (fullname, email, password, createdAt) VALUES ('${entry.fullname.replace(/'/g, "''")}', '${entry.email.replace(/'/g, "''")}', '${entry.password.replace(/'/g, "''")}', '${formattedDate}');\n`;
+  
+  fs.appendFile(SQL_FILE, insertStmt, 'utf8', (err) => {
+    if (err) {
+      console.error('Failed to append to SQL file:', err);
+    } else {
+      console.log('Successfully appended user to SQL file');
+    }
+    callback(err);
+  });
 }
 
 function ensureSignupFile(callback) {
@@ -78,7 +94,14 @@ function addSignupEntry(entry, callback) {
       }
 
       list.push(entry);
-      writeJsonFile(SIGNUP_FILE, list, callback);
+      writeJsonFile(SIGNUP_FILE, list, (writeErr) => {
+        if (writeErr) {
+          callback(writeErr);
+          return;
+        }
+        // Also append to SQL file
+        appendToSqlFile(entry, callback);
+      });
     });
   });
 }

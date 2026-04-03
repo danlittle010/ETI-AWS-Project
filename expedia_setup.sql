@@ -20,8 +20,29 @@ VALUES
 -- Step 4: Show the Results
 SELECT * FROM travel_deals;
 
+-- Step 5: Create Users Table for Signup Data
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    fullname VARCHAR(100),
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255),
+    createdAt DATETIME
+);
+
+-- Step 6: Insert Signup Data from JSON
+INSERT INTO users (fullname, email, password, createdAt) 
+VALUES 
+('Daniel Little', 'dbl5605@psu.edu', 'test1', '2026-04-02 03:15:07');
+
+-- Step 7: Show Users
+SELECT * FROM users;
+
 USE expedia_db;
 
 -- This adds a specific column that understands JSON formatting
 ALTER TABLE travel_deals 
 ADD COLUMN raw_json_data JSON;
+
+INSERT INTO users (fullname, email, password, createdAt) VALUES ('Test 2', 'test@test.com', 'pass1', '2026-04-03 00:22:26');
+
+INSERT INTO users (fullname, email, password, createdAt) VALUES ('test 3', 'test3@test.com', 'test3', '2026-04-03 00:42:38');
