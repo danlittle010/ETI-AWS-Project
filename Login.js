@@ -1,32 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const output = document.getElementById('output');
-    const saveJsonBtn = document.getElementById('saveJsonBtn');
-    const userLoginTab = document.getElementById('userLoginTab');
-    const authorLoginTab = document.getElementById('authorLoginTab');
     const loginTypeInput = document.getElementById('loginType');
-
-    function switchTab(type) {
-        loginTypeInput.value = type;
-        if (type === 'user') {
-            userLoginTab.classList.add('btn-primary');
-            userLoginTab.classList.remove('btn-outline-primary');
-            authorLoginTab.classList.remove('btn-primary');
-            authorLoginTab.classList.add('btn-outline-primary');
-        } else {
-            authorLoginTab.classList.add('btn-primary');
-            authorLoginTab.classList.remove('btn-outline-primary');
-            userLoginTab.classList.remove('btn-primary');
-            userLoginTab.classList.add('btn-outline-primary');
-        }
-    }
-
-    window.switchTab = switchTab;
 
     function collectFormData() {
         return {
             type: loginTypeInput.value || 'user',
-            name: document.getElementById('name').value.trim(),
             email: document.getElementById('email').value.trim(),
             password: document.getElementById('password').value
         };
@@ -75,29 +54,4 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'main.html';
         }, 750);
     });
-
-    saveJsonBtn.addEventListener('click', () => {
-        const formData = collectFormData();
-        const loginData = {
-            type: formData.type,
-            name: formData.name,
-            email: formData.email,
-            password: formData.password
-        };
-        const json = JSON.stringify(loginData, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = 'login-data.json';
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
-
-        showMessage('info', 'Saved form data to login-data.json');
-    });
-
-    // Start state
-    switchTab('user');
 });

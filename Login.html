@@ -12,20 +12,31 @@
 <body>
     <div class="box">
         <h2>Login to meta-search</h2>
-        <div class="mb-3">
-            <p class="text-center text-muted">Please select your account type</p>
-            <div class="d-flex gap-2 justify-content-center mb-3">
-                <button class="btn btn-sm" id="userLoginTab" onclick="switchTab('user')">User Login</button>
-                <button class="btn btn-sm" id="authorLoginTab" onclick="switchTab('author')">Author Login</button>
+        
+        <form id="loginForm">
+            <input type="hidden" id="loginType" value="user">
+            <div class="mb-2">
+                <label for="email" class="form-label">Email *</label>
+                <input type="email" class="form-control" id="email" required>
             </div>
-        </div>
+            <div class="mb-2">
+                <label for="password" class="form-label">Password *</label>
+                <input type="password" class="form-control" id="password" required>
+            </div>
+            <div class="d-grid gap-2">
+                <input type="submit" class="btn btn-primary" value="Login">
+            </div>
+        </form>
+        <div id="output" class="mt-3"></div>
         
-        
+ 
+        <div class="text-center mt-2">
             <a href="Signup.html" class="btn btn-outline-secondary btn-sm">New account? Go to Sign Up</a>
         </div>
     </div>
 
     <script src="Login.js"></script>
+    <script src="update.js"></script>
 </body>
 
 </html>
