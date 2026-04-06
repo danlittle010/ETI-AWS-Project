@@ -4,8 +4,8 @@ import random
 
 leaving_from = "New York"
 going_to = "San Francisco"
-depart_date = "2026-04-04"
-return_date = "2026-04-12"
+depart_date = "2026-04-12"
+return_date = "2026-04-24"
 
 #leaving_from = input("Enter departure city or airport: ")
 #going_to = input("Enter destination city or airport: ")
@@ -156,18 +156,21 @@ with sync_playwright() as p:
 
     # --- Depart date ---
     try:
-        page.locator('[data-testid="depart-date"]').first.click()
+        page.locator('[data-testid="Depart"]').first.click()
     except:
-        try:
-            page.locator('button:has-text("Add date")').first.click()
-        except:
-            page.locator('[data-testid="dates-container"]').first.click()
+        page.locator('[data-testid="dates-container"]').first.click()
 
     page.wait_for_timeout(2000)
     click_date(page, depart_date, "departure")
     random_wait(page)
 
     # --- Return date ---
+    try:
+        page.locator('[data-testid="Return"]').first.click()
+    except:
+        page.locator('[data-testid="dates-container"]').first.click()
+
+    page.wait_for_timeout(2000)
     click_date(page, return_date, "return")
     random_wait(page)
 
