@@ -1,6 +1,8 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
 
 async function scrapeWebsite() {
   try {
@@ -13,38 +15,53 @@ async function scrapeWebsite() {
     });
 
     const $ = cheerio.load(response.data);
+    
+    const headings = [];
+    const links = [];
+    const articles = [];
 
-    // Example: Extract all headings
+    // Extract all headings
     $('h1, h2, h3').each((i, elem) => {
-      console.log($(elem).text().trim());
+      headings.push($(elem).text().trim());
     });
 
-    // Example: Extract links
+    // Extract links
     $('a').each((i, elem) => {
       const link = $(elem).attr('href');
       const text = $(elem).text().trim();
       if (link) {
-        console.log(`${text}: ${link}`);
+        links.push({ text, link });
       }
     });
 
-    // Store data (example: save to JSON)
-    const data = [];
+    // Store article data
     $('div.article').each((i, elem) => {
-      data.push({
+      articles.push({
         title: $(elem).find('h2').text().trim(),
         content: $(elem).find('p').text().trim()
       });
     });
 
-    console.log('Scraped data:', data);
+    return { headings, links, articles, success: true };
 
   } catch (error) {
     console.error('Error scraping:', error.message);
+    return { error: error.message, success: false };
   }
 }
 
-scrapeWebsite();
+async function saveResults() {
+  const results = {
+    timestamp: new Date().toISOString(),
+    staticScrape: await scrapeWebsite()
+  };
+
+  const filePath = path.join(__dirname, 'testing.JSON');
+  fs.writeFileSync(filePath, JSON.stringify(results, null, 2));
+  console.log('Results saved to testing.JSON');
+}
+
+saveResults();
 
 async function scrapeDynamicWebsite() {
   try {
