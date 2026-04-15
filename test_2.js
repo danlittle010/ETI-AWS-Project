@@ -29,6 +29,12 @@ function getRandomProxy() {
   return proxyList[Math.floor(Math.random() * proxyList.length)];
 }
 
+// Helper: random delay between min and max ms
+function humanDelay(min, max) {
+  const ms = Math.floor(Math.random() * (max - min)) + min;
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // Exponential backoff for retries
 async function retryWithBackoff(fn, maxRetries = 3) {
   let lastError;
@@ -118,71 +124,87 @@ saveResults();
 
 async function scrapeDynamicWebsite() {
   try {
-    const url = 'https://www.skyscanner.com/transport/flights/ttn/mco/260602/260606/?adultsv2=2&cabinclass=economy&childrenv2=&ref=home&rtn=1&preferdirects=false&outboundaltsenabled=false&inboundaltsenabled=false';  // Replace with your target URL
-    const browser = await puppeteer.launch({ 
-      headless: 'new',
+    const browser = await puppeteer.launch({
+      headless: false, // Use headed mode — hardest to detect
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
+        '--window-size=1366,768',
+      ],
+      defaultViewport: null, // Use window size instead of viewport
     });
+
     const page = await browser.newPage();
 
-    // Set realistic viewport and user agent
-    await page.setViewport({ width: 1366, height: 768 });
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    // Mask webdriver flag at the JS level
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      window.chrome = { runtime: {} };
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+    });
 
-    // Set realistic headers
+    await page.setUserAgent(getRandomUserAgent());
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Referer': 'https://www.google.com/',
     });
 
-    // Add randomized delay to appear human-like
-    const randomDelay = Math.floor(Math.random() * 3000) + 2000;
-    await new Promise(resolve => setTimeout(resolve, randomDelay));
+    // Step 1: Land on homepage first like a real user
+    await page.goto('https://www.skyscanner.com', {
+      waitUntil: 'networkidle2',
+      timeout: 60000,
+    });
 
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });  // Wait for page to load fully
+    // Step 2: Simulate human mouse movement
+    await humanDelay(2000, 4000);
+    await page.mouse.move(
+      300 + Math.random() * 400,
+      200 + Math.random() * 300,
+      { steps: 20 }
+    );
+    await humanDelay(500, 1500);
 
-    // Add another delay before scraping
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Step 3: Now navigate to the search URL
+    const url = `https://www.skyscanner.com/transport/flights/${departure}/${destination}/${departday}/${returnday}/?adultsv2=${adults}&cabinclass=${cabinclass}&childrenv2=${children}&ref=home&rtn=1&preferdirects=false&outboundaltsenabled=false&inboundaltsenabled=false`;
 
-    // Wait for specific elements if needed (e.g., dynamic content)
-    // await page.waitForSelector('div.dynamic-content');
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 90000 });
 
-    // Extract data using page.evaluate (runs in browser context)
+    // Step 4: Wait for flight results to actually render
+    await humanDelay(4000, 7000);
+
+    // Try waiting for the results container (inspect Skyscanner's actual class names)
+    try {
+      await page.waitForSelector('[class*="FlightsResults"], [data-testid*="flight"]', {
+        timeout: 30000,
+      });
+    } catch {
+      console.log('Results selector timed out — dumping HTML for inspection');
+      const html = await page.content();
+      fs.writeFileSync('debug.html', html);
+      await browser.close();
+      return;
+    }
+
     const data = await page.evaluate(() => {
-      const headings = [];
-      document.querySelectorAll('h1, h2, h3').forEach(elem => {
-        headings.push(elem.textContent.trim());
+      // --- Adjust these selectors after inspecting debug.html ---
+      const prices = [];
+      document.querySelectorAll('[class*="Price"], [data-testid*="price"]').forEach(el => {
+        prices.push(el.textContent.trim());
       });
 
-      const links = [];
-      document.querySelectorAll('a').forEach(elem => {
-        const href = elem.getAttribute('href');
-        const text = elem.textContent.trim();
-        if (href) {
-          links.push({ text, href });
-        }
+      const airlines = [];
+      document.querySelectorAll('[class*="Carrier"], [data-testid*="carrier"]').forEach(el => {
+        airlines.push(el.textContent.trim());
       });
 
-      const articles = [];
-      document.querySelectorAll('div.article').forEach(elem => {
-        const title = elem.querySelector('h2')?.textContent.trim() || '';
-        const content = elem.querySelector('p')?.textContent.trim() || '';
-        articles.push({ title, content });
-      });
-
-      return { headings, links, articles };
+      return { prices, airlines };
     });
 
-    console.log('Dynamic scraped headings:', data.headings);
-    console.log('Dynamic scraped links:', data.links);
-    console.log('Dynamic scraped data:', data.articles);
+    console.log('Prices found:', data.prices);
+    console.log('Airlines found:', data.airlines);
 
     await browser.close();
 
