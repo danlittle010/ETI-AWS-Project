@@ -22,25 +22,77 @@
     </header>
     
     <main>
-      <h1>Best Travel Deals on the Web</h1>             
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="card mb-4 shadow-sm">
-                        <img src="https://via.placeholder.com/300x200" class="card-img-top" alt="Deal 1">
-                        <div class="card-body">
-                            <h5 class="card-title">Deal 1</h5>
-                            <p class="card-text">Description of Deal 1.</p>
-                            <a href="#" class="btn btn-primary">View Deal</a>
-                        </div>
+      <div class="container py-4">
+        <h1>Best Travel Deals on the Web</h1>
+
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Search Flights</h5>
+            <form id="flightSearchForm" class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label" for="departure">Departure</label>
+                <input id="departure" name="departure" class="form-control" placeholder="TTN" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="arrival">Arrival</label>
+                <input id="arrival" name="arrival" class="form-control" placeholder="MCO" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="departureDate">Depart</label>
+                <input id="departureDate" name="departureDate" type="date" class="form-control" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="returnDate">Return</label>
+                <input id="returnDate" name="returnDate" type="date" class="form-control" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label" for="adults">Adults</label>
+                <input id="adults" name="adults" type="number" min="1" value="1" class="form-control" required>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label" for="children">Children</label>
+                <input id="children" name="children" type="number" min="0" value="0" class="form-control">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label" for="infants">Infants</label>
+                <input id="infants" name="infants" type="number" min="0" value="0" class="form-control">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="cabinClass">Cabin</label>
+                <select id="cabinClass" name="cabinClass" class="form-select">
+                  <option value="economy">Economy</option>
+                  <option value="business">Business</option>
+                  <option value="first">First</option>
+                </select>
+              </div>
+              <div class="col-12 d-flex gap-2 align-items-center">
+                <button type="submit" class="btn btn-primary">Search Flights</button>
+                <a href="flight-results.html" class="btn btn-outline-secondary">View Saved Searches</a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="flightResults"></div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card mb-4 shadow-sm">
+                    <img src="https://via.placeholder.com/300x200" class="card-img-top" alt="Deal 1">
+                    <div class="card-body">
+                        <h5 class="card-title">Deal 1</h5>
+                        <p class="card-text">Description of Deal 1.</p>
+                        <a href="#" class="btn btn-primary">View Deal</a>
                     </div>
                 </div>
             </div>
         </div>
+      </div>
     </main>
 </body>
 <footer>
     <p>&copy; 2024 My Website. All rights reserved.</p>
 </footer>
 <script src="update.js"></script>
+<script src="flight-search-client.js"></script>
 </html>

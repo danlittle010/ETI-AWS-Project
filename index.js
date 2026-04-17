@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { searchFlights } = require('./test_3');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_ROOT = path.join(__dirname);
@@ -208,6 +209,47 @@ const server = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify([]));
       }
+    });
+    return;
+  }
+
+  // AJAX endpoint: Search flights via backend
+  if (url === '/api/search-flights' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 1e6) {
+        req.connection.destroy();
+      }
+    });
+
+    req.on('end', () => {
+      let payload;
+      try {
+        payload = JSON.parse(body);
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+        return;
+      }
+
+      const requiredFields = ['departure', 'arrival', 'departureDate', 'returnDate'];
+      const missingField = requiredFields.find((field) => !payload[field]);
+      if (missingField) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Missing field: ${missingField}` }));
+        return;
+      }
+
+      searchFlights(payload)
+        .then((json) => {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: json }));
+        })
+        .catch((err) => {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message || 'Flight search failed' }));
+        });
     });
     return;
   }
