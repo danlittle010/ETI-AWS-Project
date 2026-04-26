@@ -4,6 +4,7 @@ const path = require('path');
 const { searchFlights } = require('./test_3');
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_ROOT = path.join(__dirname);
 
 const mimeTypes = {
@@ -301,7 +302,7 @@ const server = http.createServer((req, res) => {
   serveFile(req, res);
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
+server.listen(PORT, HOST, () => {
+  console.log(`Server running at http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/`);
   console.log('Serving main.html as root path.');
 });
