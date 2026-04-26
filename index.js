@@ -199,7 +199,57 @@ function serveFile(req, res) {
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+  console.log(`Request: ${req.method} ${url}`);
 
+  // AJAX endpoint: Search flights via backend
+  if (url === '/api/search-flights' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 1e6) {
+        req.connection.destroy();
+      }
+    });
+
+    req.on('end', () => {
+      let payload;
+      try {
+        payload = JSON.parse(body);
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+        return;
+      }
+
+      const requiredFields = ['departure', 'arrival', 'departureDate', 'returnDate'];
+      const missingField = requiredFields.find((field) => !payload[field]);
+      if (missingField) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Missing field: ${missingField}` }));
+        return;
+      }
+
+      searchFlights(payload)
+        .then(async (json) => {
+          // Save flight results to MySQL database
+          try {
+            await saveFlightResultsToDatabase(payload, json);
+          } catch (dbErr) {
+            console.error('Failed to save flight results to MySQL:', dbErr.message);
+          }
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, data: json }));
+        })
+        .catch((err) => {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message || 'Flight search failed' }));
+        });
+    });
+    return;
+  }
+
+  // AJAX endpoint: Signup
   if (url === '/api/signup' && req.method === 'POST') {
     let body = '';
     req.on('data', (chunk) => {
@@ -270,54 +320,6 @@ const server = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify([]));
       }
-    });
-    return;
-  }
-
-  // AJAX endpoint: Search flights via backend
-  if (url === '/api/search-flights' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk;
-      if (body.length > 1e6) {
-        req.connection.destroy();
-      }
-    });
-
-    req.on('end', () => {
-      let payload;
-      try {
-        payload = JSON.parse(body);
-      } catch (e) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
-        return;
-      }
-
-      const requiredFields = ['departure', 'arrival', 'departureDate', 'returnDate'];
-      const missingField = requiredFields.find((field) => !payload[field]);
-      if (missingField) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: `Missing field: ${missingField}` }));
-        return;
-      }
-
-      searchFlights(payload)
-        .then(async (json) => {
-          // Save flight results to MySQL database
-          try {
-            await saveFlightResultsToDatabase(payload, json);
-          } catch (dbErr) {
-            console.error('Failed to save flight results to MySQL:', dbErr.message);
-          }
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, data: json }));
-        })
-        .catch((err) => {
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: err.message || 'Flight search failed' }));
-        });
     });
     return;
   }
