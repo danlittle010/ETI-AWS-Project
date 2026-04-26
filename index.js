@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { searchFlights } = require('./test_3');
+const { pool, testConnection } = require('./db');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -53,6 +54,56 @@ function appendToSqlFile(entry, callback) {
     }
     callback(err);
   });
+}
+
+// Save user to MySQL database
+async function saveUserToDatabase(entry) {
+  try {
+    const date = new Date(entry.createdAt);
+    const formattedDate = date.toISOString().replace('T', ' ').split('.')[0];
+    
+    const [result] = await pool.execute(
+      'INSERT INTO users (fullname, email, password, createdAt) VALUES (?, ?, ?, ?)',
+      [entry.fullname, entry.email, entry.password, formattedDate]
+    );
+    
+    console.log('User saved to MySQL database, ID:', result.insertId);
+    return result;
+  } catch (error) {
+    console.error('Failed to save user to MySQL:', error.message);
+    throw error;
+  }
+}
+
+// Save flight search results to MySQL database
+async function saveFlightResultsToDatabase(searchParams, flightData) {
+  try {
+    const searchJson = JSON.stringify(searchParams);
+    const resultsJson = JSON.stringify(flightData);
+    const itineraryCount = flightData.itineraries ? flightData.itineraries.length : 0;
+    const totalResults = flightData.total || itineraryCount;
+    
+    // Get lowest price if available
+    let minPrice = null;
+    if (flightData.itineraries && flightData.itineraries.length > 0) {
+      const prices = flightData.itineraries
+        .map(it => it.price?.amount)
+        .filter(p => p != null);
+      minPrice = prices.length > 0 ? Math.min(...prices) : null;
+    }
+    
+    const [result] = await pool.execute(
+      `INSERT INTO flight_searches (search_params, results_json, itinerary_count, total_results, min_price, created_at) 
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [searchJson, resultsJson, itineraryCount, totalResults, minPrice]
+    );
+    
+    console.log('Flight results saved to MySQL, ID:', result.insertId);
+    return result;
+  } catch (error) {
+    console.error('Failed to save flight results to MySQL:', error.message);
+    throw error;
+  }
 }
 
 function ensureSignupFile(callback) {
@@ -181,11 +232,20 @@ const server = http.createServer((req, res) => {
         createdAt: new Date().toISOString()
       };
 
-      addSignupEntry(safeEntry, (addErr) => {
+      // Save to JSON file and MySQL database
+      addSignupEntry(safeEntry, async (addErr) => {
         if (addErr) {
           send500(res, addErr);
           return;
         }
+        
+        // Also try to save to MySQL database
+        try {
+          await saveUserToDatabase(safeEntry);
+        } catch (dbErr) {
+          console.error('MySQL save failed, but JSON save succeeded:', dbErr.message);
+        }
+        
         res.writeHead(201, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, data: safeEntry }));
       });
@@ -243,7 +303,14 @@ const server = http.createServer((req, res) => {
       }
 
       searchFlights(payload)
-        .then((json) => {
+        .then(async (json) => {
+          // Save flight results to MySQL database
+          try {
+            await saveFlightResultsToDatabase(payload, json);
+          } catch (dbErr) {
+            console.error('Failed to save flight results to MySQL:', dbErr.message);
+          }
+          
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, data: json }));
         })
